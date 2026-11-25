@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Family Football Squares</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Custom scrollbar & sticky grid refinements for mobile stadium UX */
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .grid-scroller {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #0f172a;
+    }
+    .grid-scroller::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .grid-scroller::-webkit-scrollbar-track {
+      background: #0f172a;
+      border-radius: 999px;
+    }
+    .grid-scroller::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 999px;
+    }
+
+    .vertical-label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.94); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.16s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-emerald-500/30">
+
+  <!-- Main Container -->
+  <div class="max-w-5xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-4">
+
+    <!-- Top Stadium Header -->
+    <header class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-lg" aria-hidden="true">🏈</span>
+            <h1 id="gameTitle" class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+              Family Football Squares
+            </h1>
+          </div>
+          <p class="text-sm text-slate-400 mt-1 flex flex-wrap items-center gap-1.5">
+            <span id="headerAwayTeam" class="font-semibold text-sky-400">Away Team</span>
+            <span class="text-slate-600 font-medium">vs.</span>
+            <span id="headerHomeTeam" class="font-semibold text-rose-400">Home Team</span>
+          </p>
+        </div>
+
+        <!-- Status Badges -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="claimedBadge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-200">
+            0 / 100 Claimed
+          </span>
+          <span id="costBadge" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 border border-slate-700 text-emerald-300">
+            $5 / sq
+          </span>
+          <span id="lockBadge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Open
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Player Name Bar & Live Sync Indicator -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-lg">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div class="flex-1 relative">
+          <label for="playerNameInput" class="sr-only">Your Name</label>
+          <input
+            id="playerNameInput"
+            type="text"
+            maxlength="24"
+            autocomplete="name"
+            placeholder="Enter your name to claim squares..."
+            class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 rounded-xl px-4 py-3 text-base text-white placeholder-slate-500 outline-none transition"
+          />
+          <span id="mySquaresCount" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            0 yours
+          </span>
+        </div>
+
+        <!-- Live Sync Status Pill -->
+        <div id="syncIndicator" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-400 shrink-0">
+          <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="syncText">Connecting...</span>
+        </div>
+      </div>
+
+      <!-- Active Admin Clear Mode Banner -->
+      <div id="adminClearBanner" class="hidden mt-3 flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs sm:text-sm font-medium">
+        <span>⚠️ <strong>Admin Clear Mode Active:</strong> Tap any taken square to remove its player.</span>
+        <button id="disableClearModeBtn" type="button" class="px-2.5 py-1 rounded-lg bg-rose-500/30 hover:bg-rose-500/50 text-white font-semibold text-xs transition">
+          Exit Mode
+        </button>
+      </div>
+    </section>
+
+    <!-- Quarter Scores & Automatic Winners Strip -->
+    <section aria-label="Quarter Scores and Winners" class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3" id="winnersStrip">
+      <!-- Populated dynamically by JS -->
+    </section>
+
+    <!-- Main 10x10 Football Squares Grid -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl">
+      <!-- Away Team Top Label -->
+      <div class="flex items-center justify-center gap-2 mb-2.5 pl-6 sm:pl-8">
+        <span class="h-px flex-1 bg-gradient-to-r from-transparent to-sky-500/40"></span>
+        <span id="gridAwayLabel" class="text-xs sm:text-sm font-extrabold uppercase tracking-widest text-sky-400">
+          Away Team
+        </span>
+        <span class="h-px flex-1 bg-gradient-to-l from-transparent to-sky-500/40"></span>
+      </div>
+
+      <div class="flex items-stretch gap-1.5 sm:gap-2">
+        <!-- Home Team Left Vertical Label -->
+        <div class="flex items-center justify-center shrink-0">
+          <span id="gridHomeLabel" class="vertical-label text-xs sm:text-sm font-extrabold uppercase tracking-widest text-rose-400 py-2">
+            Home Team
+          </span>
+        </div>
+
+        <!-- Scrollable Responsive Table Container -->
+        <div class="grid-scroller flex-1 overflow-auto max-h-[72vh] rounded-xl border border-slate-800 bg-slate-950">
+          <table class="w-full min-w-[640px] border-collapse table-fixed" id="squaresTable">
+            <thead id="squaresHead">
+              <!-- Populated dynamically -->
+            </thead>
+            <tbody id="squaresBody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Compact Legend -->
+      <div class="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3.5 h-3.5 rounded bg-slate-900 border border-slate-700"></span> Open
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3.5 h-3.5 rounded bg-slate-800 border border-slate-600"></span> Taken
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3.5 h-3.5 rounded bg-emerald-900/80 border border-emerald-500"></span> Yours
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3.5 h-3.5 rounded bg-amber-950/80 border-2 border-amber-400"></span> Winner
+          </span>
+        </div>
+        <span class="text-slate-500">Swipe grid horizontally on small screens</span>
+      </div>
+    </section>
+
+    <!-- Collapsible Players & Payouts Panel -->
+    <details id="playersPanel" class="group bg-slate-900 border border-slate-800 rounded-2xl shadow-lg overflow-hidden">
+      <summary class="flex items-center justify-between gap-3 p-4 cursor-pointer select-none hover:bg-slate-800/40 transition list-none">
+        <div class="flex items-center gap-2.5">
+          <span class="text-lg" aria-hidden="true">👥</span>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Players &amp; Payouts</h2>
+            <p id="potSummaryText" class="text-xs text-slate-400">0 players • $0 collected</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
+        </div>
+      </summary>
+
+      <div class="p-4 pt-0 border-t border-slate-800/80 space-y-4">
+        <!-- Export Button Row -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-3">
+          <p class="text-xs text-slate-400">Totals calculated from current cost per square.</p>
+          <button
+            id="downloadCsvBtn"
+            type="button"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs sm:text-sm font-semibold shadow transition"
+          >
+            <span>⬇️</span> Download CSV (for Google Sheets)
+          </button>
+        </div>
+
+        <!-- Players Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th class="px-4 py-2.5 font-semibold">Player</th>
+                <th class="px-4 py-2.5 font-semibold text-center">Squares</th>
+                <th class="px-4 py-2.5 font-semibold text-right">Total Owed</th>
+              </tr>
+            </thead>
+            <tbody id="playersTbody" class="divide-y divide-slate-800 bg-slate-900/60">
+              <tr>
+                <td colspan="3" class="px-4 py-6 text-center text-slate-500 text-xs">
+                  No squares claimed yet.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <!-- Collapsible Commissioner Controls Panel (PIN Protected) -->
+    <details id="adminPanel" class="group bg-slate-900 border border-slate-800 rounded-2xl shadow-lg overflow-hidden">
+      <summary class="flex items-center justify-between gap-3 p-4 cursor-pointer select-none hover:bg-slate-800/40 transition list-none">
+        <div class="flex items-center gap-2.5">
+          <span class="text-lg" aria-hidden="true">🛡️</span>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Commissioner Controls</h2>
+            <p class="text-xs text-slate-400">PIN-protected settings, scores, shuffle &amp; board management</p>
+          </div>
+        </div>
+        <span class="text-xs font-semibold text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
+      </summary>
+
+      <div class="p-4 pt-3 border-t border-slate-800/80 space-y-5">
+        <!-- PIN Gate -->
+        <div id="adminPinGate" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <input
+            id="adminPinInput"
+            type="password"
+            inputmode="numeric"
+            placeholder="Enter Admin PIN (default: 1234)"
+            class="flex-1 bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none"
+          />
+          <button
+            id="unlockAdminBtn"
+            type="button"
+            class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition"
+          >
+            Unlock Controls
+          </button>
+        </div>
+
+        <!-- Unlocked Controls -->
+        <div id="adminControlsBody" class="hidden space-y-6">
+          <!-- Top Bar for Admin -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Commissioner Unlocked
+            </span>
+            <button id="lockAdminPanelBtn" type="button" class="text-xs font-semibold text-slate-400 hover:text-white underline">
+              Lock Panel
+            </button>
+          </div>
+
+          <!-- Quick Board Actions -->
+          <div class="space-y-2.5">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Board Actions</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <button
+                id="toggleLockBtn"
+                type="button"
+                class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs sm:text-sm transition"
+              >
+                🔒 Lock Board
+              </button>
+              <button
+                id="shuffleLockBtn"
+                type="button"
+                class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow transition"
+              >
+                🎲 Shuffle 0–9 &amp; Lock
+              </button>
+              <button
+                id="toggleClearModeBtn"
+                type="button"
+                class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-rose-300 font-semibold text-xs sm:text-sm transition"
+              >
+                🧹 Admin Clear Mode: OFF
+              </button>
+              <button
+                id="resetBoardBtn"
+                type="button"
+                class="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/40 text-rose-300 font-bold text-xs sm:text-sm transition"
+              >
+                🗑️ Reset Entire Board
+              </button>
+            </div>
+          </div>
+
+          <!-- Game Settings Form -->
+          <form id="settingsForm" class="space-y-3 pt-2 border-t border-slate-800">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Game Settings</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Game Title</label>
+                <input id="setTitle" type="text" maxlength="48" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-sky-400 mb-1">Away Team (Top)</label>
+                <input id="setAwayTeam" type="text" maxlength="30" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-sky-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-rose-400 mb-1">Home Team (Left)</label>
+                <input id="setHomeTeam" type="text" maxlength="30" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-rose-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Cost Per Square ($)</label>
+                <input id="setCost" type="number" min="0" step="1" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Admin PIN</label>
+                <input id="setAdminPin" type="text" maxlength="12" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+              </div>
+              <div class="flex items-end">
+                <button type="submit" class="w-full px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm transition">
+                  Save Settings
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Quarter Scores Form -->
+          <form id="scoresForm" class="space-y-3 pt-2 border-t border-slate-800">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Quarter Scores (Auto-Highlights Winners)</h3>
+              <span class="text-xs text-slate-500">Leave blank if not played yet</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <!-- Q1 -->
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="text-xs font-bold text-amber-400">Q1 Score</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-sky-400 truncate score-away-label">Away</label>
+                    <input id="score_q1_away" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-rose-400 truncate score-home-label">Home</label>
+                    <input id="score_q1_home" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Halftime -->
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="text-xs font-bold text-amber-400">Halftime Score</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-sky-400 truncate score-away-label">Away</label>
+                    <input id="score_half_away" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-rose-400 truncate score-home-label">Home</label>
+                    <input id="score_half_home" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Q3 -->
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="text-xs font-bold text-amber-400">Q3 Score</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-sky-400 truncate score-away-label">Away</label>
+                    <input id="score_q3_away" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-rose-400 truncate score-home-label">Home</label>
+                    <input id="score_q3_home" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Final -->
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="text-xs font-bold text-amber-400">Final Score</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] text-sky-400 truncate score-away-label">Away</label>
+                    <input id="score_final_away" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-rose-400 truncate score-home-label">Home</label>
+                    <input id="score_final_home" type="number" min="0" max="99" placeholder="-" class="w-full mt-0.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white text-center outline-none focus:border-amber-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition">
+                Save Quarter Scores
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </details>
+
+    <!-- Subtle Footer with Session User ID -->
+    <footer class="text-center text-[11px] text-slate-500 pt-2 pb-6 space-y-1">
+      <p>Real-time Family Football Squares • Changes sync instantly across all devices</p>
+      <p class="font-mono text-[10px] text-slate-600 break-all">
+        Device ID: <span id="userIdDisplay">connecting...</span>
+      </p>
+    </footer>
+  </div>
+
+  <!-- Custom Confirmation Modal (Replaces browser alert/confirm) -->
+  <div id="modalOverlay" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div id="modalCard" class="animate-pop w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl space-y-4">
+      <div class="space-y-1.5">
+        <h3 id="modalTitle" class="text-lg font-bold text-white">Confirm Action</h3>
+        <p id="modalBody" class="text-sm text-slate-300 leading-relaxed"></p>
+      </div>
+      <div class="flex items-center justify-end gap-2.5 pt-2">
+        <button id="modalCancelBtn" type="button" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition">
+          Cancel
+        </button>
+        <button id="modalConfirmBtn" type="button" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-[92%] max-w-md flex flex-col items-center gap-2"></div>
+
+  <!-- Firebase & Application Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      signInWithCustomToken
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      updateDoc,
+      onSnapshot,
+      runTransaction,
+      deleteField
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. CONFIGURATION & GLOBAL STATE
+    // =========================================================================
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-football-squares';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    let app = null;
+    let auth = null;
+    let db = null;
+    let currentUser = null;
+    let boardRef = null;
+    let userProfileRef = null;
+    let unsubscribeBoard = null;
+
+    // Live board data from Firestore
+    let boardState = null;
+
+    // Local UI state
+    let isAdminUnlocked = false;
+    let isAdminClearMode = false;
+    let modalConfirmCallback = null;
+    let nameSaveTimer = null;
+
+    const DEFAULT_BOARD = {
+      title: "Family Football Squares",
+      awayTeam: "Away Team",
+      homeTeam: "Home Team",
+      costPerSquare: 5,
+      locked: false,
+      adminPin: "1234",
+      topNums: ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?"],
+      leftNums: ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?"],
+      squares: {},
+      scores: {
+        q1: { away: "", home: "" },
+        half: { away: "", home: "" },
+        q3: { away: "", home: "" },
+        final: { away: "", home: "" }
+      },
+      updatedAt: Date.now()
+    };
+
+    const QUARTERS = [
+      { key: 'q1', label: 'Q1', short: 'Q1' },
+      { key: 'half', label: 'Halftime', short: 'H' },
+      { key: 'q3', label: 'Q3', short: 'Q3' },
+      { key: 'final', label: 'Final', short: 'F' }
+    ];
+
+    // DOM References
+    const el = {
+      gameTitle: document.getElementById('gameTitle'),
+      headerAwayTeam: document.getElementById('headerAwayTeam'),
+      headerHomeTeam: document.getElementById('headerHomeTeam'),
+      gridAwayLabel: document.getElementById('gridAwayLabel'),
+      gridHomeLabel: document.getElementById('gridHomeLabel'),
+      claimedBadge: document.getElementById('claimedBadge'),
+      costBadge: document.getElementById('costBadge'),
+      lockBadge: document.getElementById('lockBadge'),
+      playerNameInput: document.getElementById('playerNameInput'),
+      mySquaresCount: document.getElementById('mySquaresCount'),
+      syncDot: document.getElementById('syncDot'),
+      syncText: document.getElementById('syncText'),
+      adminClearBanner: document.getElementById('adminClearBanner'),
+      disableClearModeBtn: document.getElementById('disableClearModeBtn'),
+      winnersStrip: document.getElementById('winnersStrip'),
+      squaresHead: document.getElementById('squaresHead'),
+      squaresBody: document.getElementById('squaresBody'),
+      potSummaryText: document.getElementById('potSummaryText'),
+      playersTbody: document.getElementById('playersTbody'),
+      downloadCsvBtn: document.getElementById('downloadCsvBtn'),
+      adminPinGate: document.getElementById('adminPinGate'),
+      adminPinInput: document.getElementById('adminPinInput'),
+      unlockAdminBtn: document.getElementById('unlockAdminBtn'),
+      adminControlsBody: document.getElementById('adminControlsBody'),
+      lockAdminPanelBtn: document.getElementById('lockAdminPanelBtn'),
+      toggleLockBtn: document.getElementById('toggleLockBtn'),
+      shuffleLockBtn: document.getElementById('shuffleLockBtn'),
+      toggleClearModeBtn: document.getElementById('toggleClearModeBtn'),
+      resetBoardBtn: document.getElementById('resetBoardBtn'),
+      settingsForm: document.getElementById('settingsForm'),
+      setTitle: document.getElementById('setTitle'),
+      setAwayTeam: document.getElementById('setAwayTeam'),
+      setHomeTeam: document.getElementById('setHomeTeam'),
+      setCost: document.getElementById('setCost'),
+      setAdminPin: document.getElementById('setAdminPin'),
+      scoresForm: document.getElementById('scoresForm'),
+      userIdDisplay: document.getElementById('userIdDisplay'),
+      modalOverlay: document.getElementById('modalOverlay'),
+      modalTitle: document.getElementById('modalTitle'),
+      modalBody: document.getElementById('modalBody'),
+      modalCancelBtn: document.getElementById('modalCancelBtn'),
+      modalConfirmBtn: document.getElementById('modalConfirmBtn'),
+      toastContainer: document.getElementById('toastContainer')
+    };
+
+    // =========================================================================
+    // 2. UI HELPERS (TOASTS, MODALS, ESCAPING)
+    // =========================================================================
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[m]));
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      const palette = {
+        success: 'bg-emerald-600 border-emerald-400 text-white',
+        error: 'bg-rose-600 border-rose-400 text-white',
+        info: 'bg-slate-800 border-slate-600 text-slate-100'
+      }[type] || 'bg-slate-800 border-slate-600 text-slate-100';
+
+      toast.className = `animate-pop pointer-events-auto px-4 py-2.5 rounded-xl border shadow-xl text-xs sm:text-sm font-semibold text-center ${palette}`;
+      toast.textContent = message;
+      el.toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.25s ease';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 260);
+      }, 2800);
+    }
+
+    function openModal({ title, bodyHtml, confirmText = 'Confirm', confirmStyle = 'emerald', onConfirm }) {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = bodyHtml;
+      el.modalConfirmBtn.textContent = confirmText;
+
+      const styles = {
+        emerald: 'bg-emerald-600 hover:bg-emerald-500 text-white',
+        danger: 'bg-rose-600 hover:bg-rose-500 text-white',
+        amber: 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+      };
+      el.modalConfirmBtn.className = `px-4 py-2.5 rounded-xl font-bold text-sm transition ${styles[confirmStyle] || styles.emerald}`;
+      modalConfirmCallback = onConfirm;
+      el.modalOverlay.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      el.modalOverlay.classList.add('hidden');
+      modalConfirmCallback = null;
+    }
+
+    el.modalCancelBtn.addEventListener('click', closeModal);
+    el.modalOverlay.addEventListener('click', (e) => {
+      if (e.target === el.modalOverlay) closeModal();
+    });
+    el.modalConfirmBtn.addEventListener('click', async () => {
+      const fn = modalConfirmCallback;
+      closeModal();
+      if (typeof fn === 'function') {
+        await fn();
+      }
+    });
+
+    function setSyncStatus(status, label) {
+      el.syncText.textContent = label;
+      el.syncDot.className = 'w-2.5 h-2.5 rounded-full ' + (
+        status === 'live'
+          ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
+          : status === 'error'
+          ? 'bg-rose-500'
+          : 'bg-amber-400 animate-pulse'
+      );
+    }
+
+    // =========================================================================
+    // 3. FIREBASE INITIALIZATION & AUTHENTICATION (AUTH BEFORE QUERIES)
+    // =========================================================================
+    async function initApp() {
+      if (!firebaseConfig) {
+        setSyncStatus('error', 'Missing Config');
+        showToast('Firebase configuration not found in environment.', 'error');
+        return;
+      }
+
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        setSyncStatus('connecting', 'Signing in...');
+
+        // RULE 3: Authenticate FIRST before any Firestore reads/writes
+        if (initialAuthToken) {
+          const cred = await signInWithCustomToken(auth, initialAuthToken);
+          currentUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          currentUser = cred.user;
+        }
+
+        if (!currentUser) {
+          throw new Error('Authentication did not return a user.');
+        }
+
+        el.userIdDisplay.textContent = currentUser.uid;
+
+        // RULE 1: Strict Artifact Paths
+        boardRef = doc(db, 'artifacts', appId, 'public', 'data', 'football_squares', 'main_board');
+        userProfileRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'prefs');
+
+        // Load user's saved display name from private Firestore profile
+        await loadSavedPlayerName();
+
+        // Ensure the shared board exists, then listen in real time
+        await ensureBoardExists();
+        subscribeToBoard();
+      } catch (err) {
+        console.error('Initialization error:', err);
+        setSyncStatus('error', 'Connection Error');
+        showToast('Could not connect to live board. Please refresh.', 'error');
+      }
+    }
+
+    async function loadSavedPlayerName() {
+      if (!currentUser || !userProfileRef) return;
+      try {
+        const snap = await getDoc(userProfileRef);
+        if (snap.exists() && snap.data().playerName) {
+          el.playerNameInput.value = snap.data().playerName;
+        }
+      } catch (err) {
+        console.warn('Could not load saved player name:', err);
+      }
+    }
+
+    async function savePlayerName(name) {
+      if (!currentUser || !userProfileRef) return;
+      try {
+        await setDoc(userProfileRef, { playerName: name, updatedAt: Date.now() }, { merge: true });
+      } catch (err) {
+        console.warn('Could not save player name:', err);
+      }
+    }
+
+    async function ensureBoardExists() {
+      if (!currentUser || !boardRef) return;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(boardRef);
+        if (!snap.exists()) {
+          tx.set(boardRef, { ...DEFAULT_BOARD, updatedAt: Date.now() });
+        }
+      });
+    }
+
+    function subscribeToBoard() {
+      if (!currentUser || !boardRef) return;
+      if (unsubscribeBoard) unsubscribeBoard();
+
+      unsubscribeBoard = onSnapshot(
+        boardRef,
+        (snap) => {
+          if (!snap.exists()) {
+            boardState = { ...DEFAULT_BOARD };
+          } else {
+            const data = snap.data();
+            boardState = {
+              ...DEFAULT_BOARD,
+              ...data,
+              squares: data.squares || {},
+              scores: {
+                q1: { away: '', home: '', ...(data.scores?.q1 || {}) },
+                half: { away: '', home: '', ...(data.scores?.half || {}) },
+                q3: { away: '', home: '', ...(data.scores?.q3 || {}) },
+                final: { away: '', home: '', ...(data.scores?.final || {}) }
+              },
+              topNums: Array.isArray(data.topNums) && data.topNums.length === 10 ? data.topNums : DEFAULT_BOARD.topNums,
+              leftNums: Array.isArray(data.leftNums) && data.leftNums.length === 10 ? data.leftNums : DEFAULT_BOARD.leftNums
+            };
+          }
+          setSyncStatus('live', 'Live Synced');
+          renderAll();
+        },
+        (error) => {
+          console.error('Firestore onSnapshot error:', error);
+          setSyncStatus('error', 'Sync Interrupted');
+          showToast('Live sync interrupted. Retrying...', 'error');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 4. WINNERS CALCULATION
+    // =========================================================================
+    function isValidScore(val) {
+      return val !== '' && val !== null && val !== undefined && !isNaN(Number(val));
+    }
+
+    function computeQuarterWinners(state) {
+      const results = [];
+      const winningSquaresMap = {}; // "r_c" -> ['Q1', 'H', ...]
+
+      const topNumsStr = state.topNums.map(String);
+      const leftNumsStr = state.leftNums.map(String);
+
+      for (const q of QUARTERS) {
+        const sc = state.scores[q.key] || { away: '', home: '' };
+        const hasScore = isValidScore(sc.away) && isValidScore(sc.home);
+
+        if (!hasScore) {
+          results.push({ ...q, hasScore: false });
+          continue;
+        }
+
+        const awayScore = parseInt(sc.away, 10);
+        const homeScore = parseInt(sc.home, 10);
+        const awayDigit = Math.abs(awayScore) % 10;
+        const homeDigit = Math.abs(homeScore) % 10;
+
+        const colIdx = topNumsStr.indexOf(String(awayDigit));
+        const rowIdx = leftNumsStr.indexOf(String(homeDigit));
+
+        let winnerName = null;
+        let squareKey = null;
+        const numbersReady = colIdx !== -1 && rowIdx !== -1;
+
+        if (numbersReady) {
+          squareKey = `${rowIdx}_${colIdx}`;
+          winnerName = state.squares[squareKey] || null;
+          if (!winningSquaresMap[squareKey]) winningSquaresMap[squareKey] = [];
+          winningSquaresMap[squareKey].push(q.short);
+        }
+
+        results.push({
+          ...q,
+          hasScore: true,
+          awayScore,
+          homeScore,
+          awayDigit,
+          homeDigit,
+          numbersReady,
+          squareKey,
+          winnerName
+        });
+      }
+
+      return { results, winningSquaresMap };
+    }
+
+    // =========================================================================
+    // 5. RENDERING ENGINE
+    // =========================================================================
+    function renderAll() {
+      if (!boardState) return;
+
+      const myName = el.playerNameInput.value.trim();
+      const myNameLower = myName.toLowerCase();
+      const { results: quarterResults, winningSquaresMap } = computeQuarterWinners(boardState);
+
+      // Count claimed squares & per-player tally
+      const playerCounts = {};
+      let claimedTotal = 0;
+      let myTotal = 0;
+
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+          const owner = (boardState.squares[`${r}_${c}`] || '').trim();
+          if (owner) {
+            claimedTotal++;
+            playerCounts[owner] = (playerCounts[owner] || 0) + 1;
+            if (myNameLower && owner.toLowerCase() === myNameLower) {
+              myTotal++;
+            }
+          }
+        }
+      }
+
+      const cost = Number(boardState.costPerSquare) || 0;
+
+      // Header & Badges
+      el.gameTitle.textContent = boardState.title || 'Family Football Squares';
+      el.headerAwayTeam.textContent = boardState.awayTeam || 'Away Team';
+      el.headerHomeTeam.textContent = boardState.homeTeam || 'Home Team';
+      el.gridAwayLabel.textContent = boardState.awayTeam || 'Away Team';
+      el.gridHomeLabel.textContent = boardState.homeTeam || 'Home Team';
+
+      el.claimedBadge.textContent = `${claimedTotal} / 100 Claimed`;
+      el.costBadge.textContent = cost > 0 ? `$${cost} / sq` : 'Free Game';
+
+      if (boardState.locked) {
+        el.lockBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 border border-amber-500/40 text-amber-300';
+        el.lockBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span>Locked';
+      } else {
+        el.lockBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300';
+        el.lockBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>Open';
+      }
+
+      if (myName) {
+        el.mySquaresCount.classList.remove('hidden');
+        el.mySquaresCount.textContent = `${myTotal} yours`;
+      } else {
+        el.mySquaresCount.classList.add('hidden');
+      }
+
+      // Render Quarter Winners Strip
+      renderWinnersStrip(quarterResults);
+
+      // Render 10x10 Grid
+      renderGrid(myNameLower, winningSquaresMap);
+
+      // Render Players & Payouts Table
+      renderPlayersTable(playerCounts, claimedTotal, cost);
+
+      // Sync Admin Panel Controls (if unlocked)
+      syncAdminUI();
+    }
+
+    function renderWinnersStrip(quarterResults) {
+      el.winnersStrip.innerHTML = quarterResults.map((q) => {
+        if (!q.hasScore) {
+          return `
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">${q.label}</span>
+                <span class="text-[11px] font-medium text-slate-600">Pending</span>
+              </div>
+              <div class="mt-2 text-xs text-slate-500">No score yet</div>
+            </div>
+          `;
+        }
+
+        const winnerText = !q.numbersReady
+          ? '<span class="text-slate-400 italic">Shuffle numbers first</span>'
+          : q.winnerName
+          ? `<span class="text-amber-300 font-bold truncate">🏆 ${escapeHtml(q.winnerName)}</span>`
+          : '<span class="text-slate-400 italic">Unclaimed square</span>';
+
+        return `
+          <div class="bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/40 rounded-2xl p-3 flex flex-col justify-between shadow-md">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-amber-400">${q.label}</span>
+              <span class="text-xs font-extrabold text-white bg-slate-950/80 px-2 py-0.5 rounded-lg border border-slate-700">
+                <span class="text-sky-400">${q.awayScore}</span> - <span class="text-rose-400">${q.homeScore}</span>
+              </span>
+            </div>
+            <div class="mt-2 flex items-center justify-between gap-1 text-xs">
+              ${winnerText}
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">(${q.awayDigit},${q.homeDigit})</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderGrid(myNameLower, winningSquaresMap) {
+      // Sticky Top Header Row
+      let headHtml = '<tr>';
+      headHtml += '<th class="sticky top-0 left-0 z-30 bg-slate-950 border-b border-r border-slate-800 w-10 sm:w-12 h-10 text-[10px] font-bold text-slate-500 select-none">#</th>';
+      for (let c = 0; c < 10; c++) {
+        const num = escapeHtml(boardState.topNums[c]);
+        headHtml += `<th class="sticky top-0 z-20 bg-slate-950/95 backdrop-blur border-b border-r border-slate-800 h-10 text-sm sm:text-base font-extrabold text-sky-400 select-none">${num}</th>`;
+      }
+      headHtml += '</tr>';
+      el.squaresHead.innerHTML = headHtml;
+
+      // 10x10 Body
+      let bodyHtml = '';
+      for (let r = 0; r < 10; r++) {
+        const rowNum = escapeHtml(boardState.leftNums[r]);
+        bodyHtml += '<tr>';
+        bodyHtml += `<th class="sticky left-0 z-10 bg-slate-950/95 backdrop-blur border-b border-r border-slate-800 w-10 sm:w-12 h-14 sm:h-16 text-sm sm:text-base font-extrabold text-rose-400 select-none">${rowNum}</th>`;
+
+        for (let c = 0; c < 10; c++) {
+          const key = `${r}_${c}`;
+          const owner = (boardState.squares[key] || '').trim();
+          const isMine = owner && myNameLower && owner.toLowerCase() === myNameLower;
+          const winQuarters = winningSquaresMap[key] || [];
+          const isWinner = winQuarters.length > 0;
+
+          let cellClasses = 'relative border-b border-r border-slate-800/90 h-14 sm:h-16 p-1 text-center align-middle select-none transition ';
+
+          if (isWinner) {
+            cellClasses += 'bg-amber-950/60 ring-2 ring-inset ring-amber-400 text-amber-100 font-bold ';
+          } else if (isMine) {
+            cellClasses += 'bg-emerald-900/65 border-emerald-500/50 text-emerald-100 font-bold ';
+          } else if (owner) {
+            cellClasses += 'bg-slate-800/80 text-slate-200 font-semibold ';
+          } else {
+            cellClasses += boardState.locked
+              ? 'bg-slate-900/40 text-slate-700 cursor-not-allowed '
+              : 'bg-slate-900 hover:bg-emerald-950/60 active:bg-emerald-900/60 text-slate-600 hover:text-emerald-400 cursor-pointer ';
+          }
+
+          if (owner && isAdminUnlocked && isAdminClearMode) {
+            cellClasses += 'cursor-pointer hover:ring-2 hover:ring-inset hover:ring-rose-500 ';
+          }
+
+          const badgesHtml = isWinner
+            ? `<div class="absolute top-0.5 right-0.5 flex gap-0.5">${winQuarters.map(q => `<span class="px-1 py-0.2 rounded bg-amber-400 text-slate-950 text-[9px] font-black leading-tight">${q}</span>`).join('')}</div>`
+            : '';
+
+          const innerHtml = owner
+            ? `<div class="text-[11px] sm:text-xs leading-tight break-words line-clamp-2 px-0.5">${escapeHtml(owner)}</div>`
+            : `<span class="text-base font-light opacity-50">${boardState.locked ? '·' : '+'}</span>`;
+
+          bodyHtml += `<td class="${cellClasses}" data-row="${r}" data-col="${c}">${badgesHtml}${innerHtml}</td>`;
+        }
+        bodyHtml += '</tr>';
+      }
+      el.squaresBody.innerHTML = bodyHtml;
+    }
+
+    function renderPlayersTable(playerCounts, claimedTotal, cost) {
+      const entries = Object.entries(playerCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      const collected = claimedTotal * cost;
+      const fullPot = 100 * cost;
+
+      el.potSummaryText.textContent = `${entries.length} player${entries.length === 1 ? '' : 's'} • $${collected.toLocaleString()} / $${fullPot.toLocaleString()} pot`;
+
+      if (entries.length === 0) {
+        el.playersTbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="px-4 py-6 text-center text-slate-500 text-xs">
+              No squares claimed yet. Tap any open square above to jump in!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const myNameLower = el.playerNameInput.value.trim().toLowerCase();
+      el.playersTbody.innerHTML = entries.map(([name, count]) => {
+        const isMe = myNameLower && name.toLowerCase() === myNameLower;
+        const owed = count * cost;
+        return `
+          <tr class="${isMe ? 'bg-emerald-950/35' : ''}">
+            <td class="px-4 py-2.5 font-semibold ${isMe ? 'text-emerald-300' : 'text-slate-200'}">
+              ${escapeHtml(name)} ${isMe ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">You</span>' : ''}
+            </td>
+            <td class="px-4 py-2.5 text-center font-mono text-slate-300">${count}</td>
+            <td class="px-4 py-2.5 text-right font-mono font-bold text-emerald-400">$${owed.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function syncAdminUI() {
+      // Update score form team labels
+      document.querySelectorAll('.score-away-label').forEach((lbl) => {
+        lbl.textContent = boardState.awayTeam || 'Away';
+      });
+      document.querySelectorAll('.score-home-label').forEach((lbl) => {
+        lbl.textContent = boardState.homeTeam || 'Home';
+      });
+
+      if (!isAdminUnlocked) {
+        el.adminClearBanner.classList.add('hidden');
+        return;
+      }
+
+      // Update Lock button label
+      el.toggleLockBtn.textContent = boardState.locked ? '🔓 Unlock Board' : '🔒 Lock Board';
+
+      // Update Clear Mode button & banner
+      if (isAdminClearMode) {
+        el.toggleClearModeBtn.textContent = '🧹 Admin Clear Mode: ON';
+        el.toggleClearModeBtn.className = 'px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 border border-rose-400 text-white font-bold text-xs sm:text-sm transition';
+        el.adminClearBanner.classList.remove('hidden');
+      } else {
+        el.toggleClearModeBtn.textContent = '🧹 Admin Clear Mode: OFF';
+        el.toggleClearModeBtn.className = 'px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-rose-300 font-semibold text-xs sm:text-sm transition';
+        el.adminClearBanner.classList.add('hidden');
+      }
+
+      // Only populate inputs when not actively focused so typing isn't overwritten
+      if (document.activeElement !== el.setTitle) el.setTitle.value = boardState.title || '';
+      if (document.activeElement !== el.setAwayTeam) el.setAwayTeam.value = boardState.awayTeam || '';
+      if (document.activeElement !== el.setHomeTeam) el.setHomeTeam.value = boardState.homeTeam || '';
+      if (document.activeElement !== el.setCost) el.setCost.value = boardState.costPerSquare ?? 5;
+      if (document.activeElement !== el.setAdminPin) el.setAdminPin.value = boardState.adminPin || '1234';
+
+      for (const q of QUARTERS) {
+        const awayEl = document.getElementById(`score_${q.key}_away`);
+        const homeEl = document.getElementById(`score_${q.key}_home`);
+        const sc = boardState.scores[q.key] || { away: '', home: '' };
+        if (document.activeElement !== awayEl) awayEl.value = sc.away ?? '';
+        if (document.activeElement !== homeEl) homeEl.value = sc.home ?? '';
+      }
+    }
+
+    // =========================================================================
+    // 6. SQUARE CLAIMING & ADMIN CLEAR (FIRESTORE TRANSACTIONS)
+    // =========================================================================
+    el.squaresBody.addEventListener('click', (e) => {
+      const td = e.target.closest('td[data-row][data-col]');
+      if (!td || !boardState || !currentUser) return;
+
+      const r = parseInt(td.dataset.row, 10);
+      const c = parseInt(td.dataset.col, 10);
+      const key = `${r}_${c}`;
+      const existingOwner = (boardState.squares[key] || '').trim();
+
+      // Case 1: Square is already taken
+      if (existingOwner) {
+        if (isAdminUnlocked && isAdminClearMode) {
+          openModal({
+            title: 'Clear Claimed Square?',
+            bodyHtml: `Remove <strong>${escapeHtml(existingOwner)}</strong> from Row ${r + 1}, Column ${c + 1}?`,
+            confirmText: 'Clear Square',
+            confirmStyle: 'danger',
+            onConfirm: () => clearSquare(key, existingOwner)
+          });
+        } else {
+          showToast(`Taken by ${existingOwner}`, 'info');
+        }
+        return;
+      }
+
+      // Case 2: Square is open, check lock
+      if (boardState.locked) {
+        showToast('This board is currently locked.', 'error');
+        return;
+      }
+
+      // Case 3: Require player name
+      const playerName = el.playerNameInput.value.trim();
+      if (!playerName) {
+        el.playerNameInput.focus();
+        showToast('Enter your name at the top first!', 'error');
+        return;
+      }
+
+      const cost = Number(boardState.costPerSquare) || 0;
+      const topLabel = boardState.topNums[c] !== '?' ? `${escapeHtml(boardState.awayTeam)} #${boardState.topNums[c]}` : `Col ${c + 1}`;
+      const leftLabel = boardState.leftNums[r] !== '?' ? `${escapeHtml(boardState.homeTeam)} #${boardState.leftNums[r]}` : `Row ${r + 1}`;
+
+      openModal({
+        title: 'Claim This Square?',
+        bodyHtml: `
+          Claim <span class="font-semibold text-white">${leftLabel} × ${topLabel}</span>
+          as <span class="font-bold text-emerald-400">${escapeHtml(playerName)}</span>?
+          ${cost > 0 ? `<div class="mt-2 text-xs text-slate-400">Cost per square: <strong class="text-slate-200">$${cost}</strong></div>` : ''}
+        `,
+        confirmText: 'Claim Square',
+        confirmStyle: 'emerald',
+        onConfirm: () => claimSquareAtomic(key, playerName)
+      });
+    });
+
+    async function claimSquareAtomic(key, playerName) {
+      if (!currentUser || !boardRef) return;
+      const cleanName = playerName.trim().slice(0, 24);
+
+      try {
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(boardRef);
+          if (!snap.exists()) {
+            throw new Error('Board not initialized.');
+          }
+          const data = snap.data();
+          if (data.locked) {
+            throw new Error('Board was just locked by the commissioner.');
+          }
+          const existing = data.squares?.[key];
+          if (existing) {
+            throw new Error(`Oops! ${existing} just grabbed that square.`);
+          }
+          tx.update(boardRef, {
+            [`squares.${key}`]: cleanName,
+            updatedAt: Date.now()
+          });
+        });
+        showToast(`Square claimed for ${cleanName}!`, 'success');
+      } catch (err) {
+        console.error('Claim transaction failed:', err);
+        showToast(err.message || 'Could not claim square. Try again.', 'error');
+      }
+    }
+
+    async function clearSquare(key, oldOwner) {
+      if (!currentUser || !boardRef) return;
+      try {
+        await updateDoc(boardRef, {
+          [`squares.${key}`]: deleteField(),
+          updatedAt: Date.now()
+        });
+        showToast(`Cleared ${oldOwner}'s square.`, 'success');
+      } catch (err) {
+        console.error('Clear square error:', err);
+        showToast('Failed to clear square.', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 7. PLAYER NAME INPUT (AUTO-SAVE TO PRIVATE FIRESTORE PROFILE)
+    // =========================================================================
+    el.playerNameInput.addEventListener('input', () => {
+      renderAll();
+      clearTimeout(nameSaveTimer);
+      const val = el.playerNameInput.value.trim();
+      nameSaveTimer = setTimeout(() => {
+        savePlayerName(val);
+      }, 500);
+    });
+
+    // =========================================================================
+    // 8. COMMISSIONER CONTROLS & ACTIONS
+    // =========================================================================
+    el.unlockAdminBtn.addEventListener('click', () => {
+      if (!boardState) return;
+      const entered = el.adminPinInput.value.trim();
+      const realPin = String(boardState.adminPin || '1234').trim();
+
+      if (entered === realPin) {
+        isAdminUnlocked = true;
+        el.adminPinInput.value = '';
+        el.adminPinGate.classList.add('hidden');
+        el.adminControlsBody.classList.remove('hidden');
+        syncAdminUI();
+        showToast('Commissioner controls unlocked.', 'success');
+      } else {
+        showToast('Incorrect Admin PIN.', 'error');
+      }
+    });
+
+    el.adminPinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        el.unlockAdminBtn.click();
+      }
+    });
+
+    el.lockAdminPanelBtn.addEventListener('click', () => {
+      isAdminUnlocked = false;
+      isAdminClearMode = false;
+      el.adminControlsBody.classList.add('hidden');
+      el.adminPinGate.classList.remove('hidden');
+      el.adminClearBanner.classList.add('hidden');
+      renderAll();
+      showToast('Commissioner panel locked.', 'info');
+    });
+
+    el.toggleLockBtn.addEventListener('click', async () => {
+      if (!currentUser || !boardRef || !boardState) return;
+      try {
+        const nextLocked = !boardState.locked;
+        await updateDoc(boardRef, { locked: nextLocked, updatedAt: Date.now() });
+        showToast(nextLocked ? 'Board locked!' : 'Board unlocked!', 'success');
+      } catch (err) {
+        showToast('Could not update lock state.', 'error');
+      }
+    });
+
+    el.toggleClearModeBtn.addEventListener('click', () => {
+      isAdminClearMode = !isAdminClearMode;
+      renderAll();
+      showToast(isAdminClearMode ? 'Admin Clear Mode ON: tap any taken square.' : 'Admin Clear Mode OFF.', 'info');
+    });
+
+    el.disableClearModeBtn.addEventListener('click', () => {
+      isAdminClearMode = false;
+      renderAll();
+    });
+
+    // Fisher-Yates shuffle for 0-9
+    function fisherYatesDigits() {
+      const arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr.map(String);
+    }
+
+    el.shuffleLockBtn.addEventListener('click', () => {
+      openModal({
+        title: 'Shuffle 0–9 & Lock Board?',
+        bodyHtml: 'This will randomly assign numbers <strong>0–9</strong> to both teams and <strong>lock the board</strong> so no more picks can be made.',
+        confirmText: 'Shuffle & Lock',
+        confirmStyle: 'amber',
+        onConfirm: async () => {
+          if (!currentUser || !boardRef) return;
+          try {
+            await updateDoc(boardRef, {
+              topNums: fisherYatesDigits(),
+              leftNums: fisherYatesDigits(),
+              locked: true,
+              updatedAt: Date.now()
+            });
+            showToast('Numbers shuffled & board locked!', 'success');
+          } catch (err) {
+            showToast('Failed to shuffle numbers.', 'error');
+          }
+        }
+      });
+    });
+
+    el.resetBoardBtn.addEventListener('click', () => {
+      openModal({
+        title: 'Reset Entire Board?',
+        bodyHtml: '<span class="text-rose-300 font-semibold">Warning:</span> This will wipe <strong>all claimed squares</strong>, clear quarter scores, reset numbers back to <code>?</code>, and unlock the board for a brand-new game.',
+        confirmText: 'Yes, Reset Board',
+        confirmStyle: 'danger',
+        onConfirm: async () => {
+          if (!currentUser || !boardRef || !boardState) return;
+          try {
+            await setDoc(boardRef, {
+              title: boardState.title || DEFAULT_BOARD.title,
+              awayTeam: boardState.awayTeam || DEFAULT_BOARD.awayTeam,
+              homeTeam: boardState.homeTeam || DEFAULT_BOARD.homeTeam,
+              costPerSquare: boardState.costPerSquare ?? DEFAULT_BOARD.costPerSquare,
+              adminPin: boardState.adminPin || DEFAULT_BOARD.adminPin,
+              locked: false,
+              topNums: ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?"],
+              leftNums: ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?"],
+              squares: {},
+              scores: {
+                q1: { away: "", home: "" },
+                half: { away: "", home: "" },
+                q3: { away: "", home: "" },
+                final: { away: "", home: "" }
+              },
+              updatedAt: Date.now()
+            });
+            isAdminClearMode = false;
+            showToast('Board reset for a new game!', 'success');
+          } catch (err) {
+            showToast('Failed to reset board.', 'error');
+          }
+        }
+      });
+    });
+
+    el.settingsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser || !boardRef) return;
+
+      const title = el.setTitle.value.trim() || 'Family Football Squares';
+      const awayTeam = el.setAwayTeam.value.trim() || 'Away Team';
+      const homeTeam = el.setHomeTeam.value.trim() || 'Home Team';
+      const costPerSquare = Math.max(0, Number(el.setCost.value) || 0);
+      const adminPin = el.setAdminPin.value.trim() || '1234';
+
+      try {
+        await updateDoc(boardRef, {
+          title,
+          awayTeam,
+          homeTeam,
+          costPerSquare,
+          adminPin,
+          updatedAt: Date.now()
+        });
+        showToast('Game settings saved!', 'success');
+      } catch (err) {
+        showToast('Failed to save settings.', 'error');
+      }
+    });
+
+    el.scoresForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser || !boardRef) return;
+
+      const scores = {};
+      for (const q of QUARTERS) {
+        const awayVal = document.getElementById(`score_${q.key}_away`).value.trim();
+        const homeVal = document.getElementById(`score_${q.key}_home`).value.trim();
+        scores[q.key] = { away: awayVal, home: homeVal };
+      }
+
+      try {
+        await updateDoc(boardRef, { scores, updatedAt: Date.now() });
+        showToast('Quarter scores updated!', 'success');
+      } catch (err) {
+        showToast('Failed to update scores.', 'error');
+      }
+    });
+
+    // =========================================================================
+    // 9. GOOGLE SHEETS CSV EXPORT
+    // =========================================================================
+    function csvEscape(val) {
+      const s = String(val ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    }
+
+    el.downloadCsvBtn.addEventListener('click', () => {
+      if (!boardState) return;
+      const rows = [];
+
+      rows.push([boardState.title, `Away (Top): ${boardState.awayTeam}`, `Home (Left): ${boardState.homeTeam}`, `Cost: $${boardState.costPerSquare}`]);
+      rows.push([]);
+
+      // Header Row
+      rows.push([`${boardState.homeTeam} \\ ${boardState.awayTeam}`, ...boardState.topNums]);
+
+      // 10x10 Grid Rows
+      for (let r = 0; r < 10; r++) {
+        const line = [boardState.leftNums[r]];
+        for (let c = 0; c < 10; c++) {
+          line.push(boardState.squares[`${r}_${c}`] || '');
+        }
+        rows.push(line);
+      }
+
+      const csvContent = rows.map((row) => row.map(csvEscape).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = (boardState.title || 'football_squares').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      a.href = url;
+      a.download = `${safeName}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('CSV downloaded for Google Sheets!', 'success');
+    });
+
+    // Start the app
+    initApp();
+  </script>
+</body>
+</html>
