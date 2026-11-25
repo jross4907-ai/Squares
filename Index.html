@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Family Football Squares</title>
+  <style>
+    :root {
+      --bg: #0f172a; --card: #1e293b; --border: #334155;
+      --text: #f8fafc; --muted: #94a3b8;
+      --accent: #22c55e; --mine: #166534; --taken: #273549;
+      --warn: #f59e0b; --gold: #eab308;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; padding: 12px; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 820px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 12px; }
+    h1 { margin: 0 0 6px; font-size: 1.4rem; }
+    .meta { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem; }
+    .badge { padding: 3px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+    .badge.open { color: var(--accent); border-color: #15803d; }
+    .badge.locked { color: var(--warn); border-color: var(--warn); }
+
+    .winners { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+    .w-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px; text-align: center; font-size: 0.75rem; }
+    .w-card.active { border-color: var(--gold); background: #292514; }
+    .w-q { font-weight: 700; color: var(--gold); }
+    .w-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+    .bar { display: flex; gap: 8px; margin-bottom: 8px; background: var(--card); padding: 10px; border-radius: 10px; border: 1px solid var(--border); }
+    .bar input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1rem; min-width: 0; }
+    .btn { padding: 10px 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; background: var(--accent); color: #052e16; font-size: 0.88rem; white-space: nowrap; }
+    .btn.sec { background: var(--border); color: var(--text); }
+    .btn.warn { background: #b45309; color: #fff; }
+    .btn.danger { background: #b91c1c; color: #fff; }
+
+    .toast { min-height: 20px; text-align: center; font-size: 0.84rem; margin-bottom: 8px; color: var(--accent); }
+    .toast.err { color: #f87171; }
+
+    .team-top { text-align: center; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.85rem; color: #38bdf8; margin-bottom: 6px; }
+    .board-row { display: flex; align-items: stretch; }
+    .team-left { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.85rem; color: #f472b6; padding: 0 4px; }
+    .scroller { flex: 1; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; border: 1px solid var(--border); }
+
+    table { border-collapse: collapse; width: 100%; min-width: 580px; table-layout: fixed; }
+    th, td { border: 1px solid var(--border); text-align: center; height: 50px; padding: 2px; font-size: 0.72rem; word-break: break-word; position: relative; }
+    th { background: #090e1a; color: #e2e8f0; font-size: 0.92rem; font-weight: 700; }
+    td.open { background: var(--card); cursor: pointer; color: #64748b; font-size: 1rem; }
+    td.open:hover { background: #1e3a2f; color: var(--accent); }
+    td.taken { background: var(--taken); color: var(--text); font-weight: 600; }
+    td.mine { background: var(--mine); color: #dcfce7; font-weight: 700; border-color: var(--accent); }
+    td.winner { outline: 2px solid var(--gold); outline-offset: -2px; }
+    .q-tag { position: absolute; top: 1px; right: 2px; background: var(--gold); color: #000; font-size: 0.58rem; font-weight: 800; padding: 0 3px; border-radius: 3px; }
+
+    details.panel { margin-top: 12px; background: var(--card); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+    details.panel summary { cursor: pointer; font-weight: 700; font-size: 0.92rem; color: #e2e8f0; }
+    .panel-body { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .row input { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.88rem; }
+    .score-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .score-box { background: var(--bg); padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem; }
+    .score-box input { width: 54px; padding: 5px; margin-left: 4px; border-radius: 4px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+    .roster-table { width: 100%; min-width: 0; font-size: 0.82rem; }
+    .roster-table th, .roster-table td { height: 32px; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1 id="title">Family Football Squares</h1>
+      <div class="meta">
+        <span class="badge" id="countBadge">0 / 100 Claimed</span>
+        <span class="badge" id="costBadge">$5 / square</span>
+        <span class="badge open" id="statusBadge">Open</span>
+      </div>
+    </header>
+
+    <div class="winners" id="winnersBar"></div>
+
+    <div class="bar">
+      <input id="playerName" type="text" placeholder="Type your name to claim squares" maxlength="24" />
+      <button class="btn sec" onclick="syncBoard(true)">Refresh</button>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <div id="topTeam" class="team-top">Away Team</div>
+    <div class="board-row">
+      <div id="leftTeam" class="team-left">Home Team</div>
+      <div class="scroller"><table id="grid"></table></div>
+    </div>
+
+    <details class="panel">
+      <summary>Players, Payouts &amp; CSV Download</summary>
+      <div class="panel-body">
+        <div class="row">
+          <button class="btn" onclick="downloadCSV()">Download Spreadsheet (.CSV)</button>
+        </div>
+        <table class="roster-table" id="rosterTable"></table>
+      </div>
+    </details>
+
+    <details class="panel">
+      <summary>Commissioner Controls</summary>
+      <div class="panel-body">
+        <div class="row">
+          <input id="adminPin" type="password" placeholder="Admin PIN (1234)" style="width:140px;" />
+          <button class="btn sec" onclick="adminCall('toggleLock')">Lock / Unlock</button>
+          <button class="btn" onclick="adminCall('randomize')">Shuffle 0–9 &amp; Lock</button>
+          <button class="btn danger" onclick="if(confirm('Clear all squares and numbers?')) adminCall('resetBoard')">Reset Board</button>
+        </div>
+
+        <div class="row">
+          <input id="cfgTitle" placeholder="Board Title" style="flex:1; min-width:150px;" />
+          <input id="cfgTop" placeholder="Top Team" style="width:120px;" />
+          <input id="cfgLeft" placeholder="Left Team" style="width:120px;" />
+          <input id="cfgCost" type="number" placeholder="Cost $" style="width:80px;" />
+          <button class="btn sec" onclick="saveSetup()">Save Teams/Cost</button>
+        </div>
+
+        <div class="score-grid">
+          <div class="score-box"><strong>Q1</strong> Top:<input id="q1Top" type="number"> Left:<input id="q1Left" type="number"></div>
+          <div class="score-box"><strong>Half</strong> Top:<input id="q2Top" type="number"> Left:<input id="q2Left" type="number"></div>
+          <div class="score-box"><strong>Q3</strong> Top:<input id="q3Top" type="number"> Left:<input id="q3Left" type="number"></div>
+          <div class="score-box"><strong>Final</strong> Top:<input id="q4Top" type="number"> Left:<input id="q4Left" type="number"></div>
+        </div>
+        <div class="row">
+          <button class="btn warn" onclick="saveScores()">Update Quarter Scores</button>
+          <span style="font-size:0.75rem; color:var(--muted);">With PIN entered above, tap any claimed square on the grid to clear it.</span>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzX002xvKdvm_f6qaaFbhgYoVic6RPehR7FzkJPhHPk5a1iDWxRkvVNHwmCv5EpiAW3/exec';
+
+    let state = {
+      title: 'Family Football Squares',
+      topTeam: 'Away Team',
+      leftTeam: 'Home Team',
+      locked: false,
+      cost: 5,
+      topNums: Array(10).fill('?'),
+      leftNums: Array(10).fill('?'),
+      grid: Array.from({ length: 10 }, () => Array(10).fill('')),
+      scores: { q1:{top:'',left:''}, q2:{top:'',left:''}, q3:{top:'',left:''}, q4:{top:'',left:''} }
+    };
+    let busy = false;
+
+    const nameInput = document.getElementById('playerName');
+    nameInput.value = localStorage.getItem('sq_player_name') || '';
+    nameInput.addEventListener('input', () => {
+      localStorage.setItem('sq_player_name', nameInput.value.trim());
+      render();
+    });
+
+    function toast(msg, err) {
+      const el = document.getElementById('toast');
+      el.textContent = msg || '';
+      el.className = 'toast' + (err ? ' err' : '');
+    }
+
+    function hasBackend() {
+      return SCRIPT_URL && SCRIPT_URL.startsWith('https://');
+    }
+
+    async function syncBoard(manual) {
+      if (!hasBackend()) {
+        render();
+        toast('Demo mode: Paste your Google Apps Script URL in index.html to sync with Google Sheets.', true);
+        return;
+      }
+      if (busy) return;
+      if (manual) toast('Syncing with Google Sheet...');
+      try {
+        const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+        const data = await res.json();
+        if (data.ok && data.state) {
+          state = data.state;
+          populateAdminFields();
+          render();
+          if (manual) toast('Synced with Google Sheet.');
+        }
+      } catch (e) {
+        if (manual) toast('Could not reach Google Sheet—check deployment permissions.', true);
+      }
+    }
+
+    function populateAdminFields() {
+      if (document.activeElement && document.activeElement.closest('.panel')) return;
+      document.getElementById('cfgTitle').value = state.title;
+      document.getElementById('cfgTop').value = state.topTeam;
+      document.getElementById('cfgLeft').value = state.leftTeam;
+      document.getElementById('cfgCost').value = state.cost;
+      ['q1','q2','q3','q4'].forEach(q => {
+        document.getElementById(q + 'Top').value = state.scores?.[q]?.top ?? '';
+        document.getElementById(q + 'Left').value = state.scores?.[q]?.left ?? '';
+      });
+    }
+
+    function getWinners() {
+      const labels = { q1: 'Q1', q2: 'Half', q3: 'Q3', q4: 'Final' };
+      const res = [];
+      ['q1','q2','q3','q4'].forEach(q => {
+        const sc = state.scores?.[q];
+        if (!sc || sc.top === '' || sc.left === '') {
+          res.push({ key: q, label: labels[q], r: -1, c: -1, owner: 'TBD' });
+          return;
+        }
+        const tDigit = String(Math.abs(parseInt(sc.top, 10)) % 10);
+        const lDigit = String(Math.abs(parseInt(sc.left, 10)) % 10);
+        const c = state.topNums.indexOf(tDigit);
+        const r = state.leftNums.indexOf(lDigit);
+        const owner = (r >= 0 && c >= 0) ? (state.grid[r][c] || 'Unclaimed') : 'Numbers ?';
+        res.push({ key: q, label: labels[q], r, c, owner });
+      });
+      return res;
+    }
+
+    function render() {
+      document.getElementById('title').textContent = state.title;
+      document.getElementById('topTeam').textContent = state.topTeam;
+      document.getElementById('leftTeam').textContent = state.leftTeam;
+      document.getElementById('costBadge').textContent = '$' + state.cost + ' / square';
+
+      const st = document.getElementById('statusBadge');
+      st.textContent = state.locked ? 'Locked' : 'Open';
+      st.className = 'badge ' + (state.locked ? 'locked' : 'open');
+
+      const winners = getWinners();
+      document.getElementById('winnersBar').innerHTML = winners.map(w => `
+        <div class="w-card ${w.r >= 0 ? 'active' : ''}">
+          <div class="w-q">${w.label}</div>
+          <div class="w-name">${esc(w.owner)}</div>
+        </div>
+      `).join('');
+
+      const myName = nameInput.value.trim().toLowerCase();
+      let claimed = 0;
+      const counts = {};
+
+      let html = '<thead><tr><th></th>' + state.topNums.map(n => `<th>${esc(n)}</th>`).join('') + '</tr></thead><tbody>';
+      for (let r = 0; r < 10; r++) {
+        html += `<tr><th>${esc(state.leftNums[r])}</th>`;
+        for (let c = 0; c < 10; c++) {
+          const owner = state.grid[r][c];
+          if (owner) {
+            claimed++;
+            counts[owner] = (counts[owner] || 0) + 1;
+          }
+          const qTags = winners.filter(w => w.r === r && w.c === c).map(w => w.label);
+          const isMine = owner && myName && owner.toLowerCase() === myName;
+          const cls = [owner ? (isMine ? 'mine' : 'taken') : 'open', qTags.length ? 'winner' : ''].join(' ');
+          const badge = qTags.length ? `<span class="q-tag">${qTags.join('/')}</span>` : '';
+          html += `<td class="${cls}" onclick="tapCell(${r},${c})">${badge}${esc(owner || '+')}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</tbody>';
+      document.getElementById('grid').innerHTML = html;
+      document.getElementById('countBadge').textContent = `${claimed} / 100 Claimed`;
+
+      const players = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      document.getElementById('rosterTable').innerHTML = players.length
+        ? '<thead><tr><th>Player</th><th>Squares</th><th>Total Owed</th></tr></thead><tbody>' +
+          players.map(([p, n]) => `<tr><td>${esc(p)}</td><td>${n}</td><td>$${n * state.cost}</td></tr>`).join('') +
+          '</tbody>'
+        : '<tr><td>No squares claimed yet.</td></tr>';
+    }
+
+    async function tapCell(r, c) {
+      if (busy) return;
+      const existing = state.grid[r][c];
+      const pin = document.getElementById('adminPin').value.trim();
+
+      if (existing) {
+        if (pin && confirm(`Clear ${existing} from Row ${r+1}, Col ${c+1}?`)) {
+          adminCall('clearSquare', { r, c });
+        }
+        return;
+      }
+
+      if (state.locked) return toast('Board is locked.', true);
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameInput.focus();
+        return toast('Enter your name at the top first.', true);
+      }
